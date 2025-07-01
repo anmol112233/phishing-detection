@@ -1,0 +1,346 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+
+
+import pandas as pd
+df = pd.read_csv('/content/drive/MyDrive/phishing_email.csv.zip')
+
+
+
+# Check for missing values
+print(df.isnull().sum())
+# Drop missing values
+df.dropna(inplace=True)
+
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+# Assuming 'Email Text' is the feature column and 'Email Type' is the target column
+X = df['Email Text']
+y = df['Email Type']
+# Create TF-IDF features from text data
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(X)
+# Split dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+# Train Random Forest model
+model = RandomForestClassifier(n_estimators=100)
+model.fit(X_train, y_train)
+
+
+
+from sklearn.linear_model import LogisticRegression # Import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier # Import DecisionTreeClassifier
+from sklearn.svm import SVC # Import SVC
+# Define models
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier(),
+    "SVM": SVC()
+}
+
+
+
+
+# Make predictions
+y_pred = model.predict(X_test)
+# Evaluate model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+# Print shapes of training and testing sets
+print("Training Set Shapes:")
+print("X_train:", X_train.shape)
+print("y_train:", y_train.shape)
+print("\nTesting Set Shapes:")
+print("X_test:", X_test.shape)
+print("y_test:", y_test.shape)
+
+
+
+
+from sklearn.model_selection import GridSearchCV
+param_grid = {
+    'n_estimators': [50, 100],
+    'max_depth': [None, 5]
+}
+grid_search = GridSearchCV(RandomForestClassifier(), param_grid, cv=2)
+grid_search.fit(X_train, y_train)
+print("Best Parameters:", grid_search.best_params_)
+print("Best Score:", grid_search.best_score_)
+
+
+
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+param_grid = {
+    'n_estimators': [50, 100],
+    'max_depth': [None, 5]
+}
+grid_search = GridSearchCV(RandomForestClassifier(), param_grid, cv=2)
+grid_search.fit(X_train, y_train)
+print("Best Parameters:", grid_search.best_params_)
+print("Best Score:", grid_search.best_score_)
+best_model = grid_search.best_estimator_
+y_pred = best_model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+feature_importances = best_model.feature_importances_
+top_features = feature_importances.argsort()[-10:][::-1]
+# Get feature names from the vectorizer
+feature_names = vectorizer.get_feature_names_out()
+# Use feature names to label the bar plot
+sns.barplot(x=feature_importances[top_features], y=feature_names[top_features])
+plt.title("Feature Importances")
+plt.show()
+
+
+
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, cmap='Blues')
+plt.xlabel("Predicted labels")
+plt.ylabel("True labels")
+plt.show()
+
+
+
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+# Load the DataFrame (make sure the file path is correct)
+df = pd.read_csv('/content/drive/MyDrive/phishing_email.csv.zip')
+# Assuming 'Email Text' is the feature column and 'Email Type' is the target column
+X = df['Email Text'].astype(str)  # Convert to string to handle potential mixed types
+y = df['Email Type']
+# Assume X and y are your data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Vectorizer
+vectorizer = TfidfVectorizer()
+X_train_vectorized = vectorizer.fit_transform(X_train)
+X_test_vectorized = vectorizer.transform(X_test)
+
+
+
+
+from flask import Flask, request, jsonify
+import pickle
+app = Flask(__name__)
+# Save the model and vectorizer
+with open('best_model.pkl', 'wb') as f:  # Use 'wb' for writing in binary mode
+    pickle.dump(best_model, f)
+with open('vectorizer.pkl', 'wb') as f:  # Use 'wb' for writing in binary mode
+    pickle.dump(vectorizer, f)
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    email_text = data['email_text']
+    email_text_vectorized = vectorizer.transform([email_text])
+    prediction = best_model.predict(email_text_vectorized)
+    return jsonify({'prediction': prediction[0]})
+if __name__ == '__main__':
+    app.run(port=5004, debug=True)
+
+
+
+
+import threading
+# Function to start the Flask app in a background thread
+def start_flask_app():
+    app.run(port=5004, debug=True)
+# Create and start the background thread
+flask_thread = threading.Thread(target=start_flask_app)
+flask_thread.daemon = True  # Set as daemon thread so it exits when the main program exits
+flask_thread.start()
+
+
+
+
+!pip install -U scikit-learn
+import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, roc_curve
+# Load the DataFrame (make sure the file path is correct)
+df = pd.read_csv('/content/drive/MyDrive/phishing_email.csv.zip')
+# Assuming 'Email Text' is the feature column and 'Email Type' is the target column
+X = df['Email Text'].astype(str)  # Convert to string to handle potential mixed types
+y = df['Email Type']
+# Assume X and y are your data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Vectorizer - Fit only on training data
+vectorizer = TfidfVectorizer()
+X_train_vectorized = vectorizer.fit_transform(X_train)
+# Transform the test data using the trained vectorizer
+X_test_vectorized = vectorizer.transform(X_test) # only transform is used
+# Load or train your model (replace with your model loading/training code if needed)
+best_model = RandomForestClassifier()
+best_model.fit(X_train_vectorized, y_train)
+# Cross-validation
+scores = cross_val_score(best_model, X_train_vectorized, y_train, cv=5)
+print("Cross-validation scores:", scores)
+print("Average cross-validation score:", scores.mean())
+# ROC-AUC curve
+# Explicitly specify 'pos_label' in roc_curve and roc_auc_score
+# Get the index of the positive label
+positive_label_index = best_model.classes_.tolist().index('Phishing Email')
+# Predict probabilities and select the column for the positive label
+y_pred_proba = best_model.predict_proba(X_test_vectorized)[:, positive_label_index]
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='Phishing Email') # Specify pos_label here
+#Instead of using pos_label directly in roc_auc_score,
+#we now calculate it based on the predicted probabilities of the positive class
+auc = roc_auc_score(y_test, y_pred_proba)
+print("AUC:", auc)
+
+
+
+
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.feature_extraction.text import TfidfVectorizer  # Import TfidfVectorizer
+def load_data(file_path):
+  """
+    Load phishing email data from a CSV file.
+    Parameters:
+    file_path (str): Path to the CSV file
+    Returns:
+    pandas.DataFrame: Loaded data
+    """
+    # Updated file path to include the full path from Google Drive
+    data = pd.read_csv('/content/drive/MyDrive/phishing_email.csv.zip')
+    return data
+def split_data(data):
+    """
+    Split data into training and testing sets.
+    Parameters:
+    data (pandas.DataFrame): Loaded data
+    Returns:
+    tuple: X_train, X_test, y_train, y_test
+    """
+    # Drop rows with missing values in 'Email Text' before splitting
+    data = data.dropna(subset=['Email Text'])
+    X = data['Email Text']
+    y = data['Email Type']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return X_train, X_test, y_train, y_test
+def train_model(X_train, y_train):
+    """
+    Train a random forest classifier on the training data.
+    Parameters:
+    X_train (numpy array): Training features
+    y_train (numpy array): Training labels
+    Returns:
+    sklearn.ensemble.RandomForestClassifier: Trained model
+    """
+    # Create a TfidfVectorizer instance
+    vectorizer = TfidfVectorizer()
+    # Fit and transform the training data
+    X_train_vectorized = vectorizer.fit_transform(X_train)
+    model = RandomForestClassifier(n_estimators=100)
+    model.fit(X_train_vectorized, y_train)  # Use the vectorized data for training
+    return model, vectorizer  # Return both the model and the vectorizer
+def evaluate_model(model, vectorizer, X_test, y_test): # Add vectorizer as argument
+    """
+    Evaluate the model's performance on the testing data.
+    Parameters:
+    model (sklearn.ensemble.RandomForestClassifier): Trained model
+    X_test (numpy array): Testing features
+    y_test (numpy array): Testing labels
+    Returns:
+    tuple: accuracy, classification report, confusion matrix
+    """
+    # Transform the test data using the same vectorizer
+    X_test_vectorized = vectorizer.transform(X_test)
+    y_pred = model.predict(X_test_vectorized)  # Use the vectorized data for prediction
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+    matrix = confusion_matrix(y_test, y_pred)
+    return accuracy, report, matrix
+# Load data
+data = load_data('/content/drive/MyDrive/phishing_email.csv.zip') # Updated file path
+# Split data
+X_train, X_test, y_train, y_test = split_data(data)
+# Train model
+model, vectorizer = train_model(X_train, y_train) # Get the vectorizer
+# Evaluate model
+accuracy, report, matrix = evaluate_model(model, vectorizer, X_test, y_test) # Pass vectorizer
+print("Accuracy:", accuracy)
+print("Classification Report:")
+print(report)
+print("Confusion Matrix:")
+print(matrix)
+
+
+
+
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+# Vectorizer
+vectorizer = TfidfVectorizer()
+X_train_vectorized = vectorizer.fit_transform(X_train)
+X_test_vectorized = vectorizer.transform(X_test)
+# RandomizedSearchCV
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 5, 10]
+}
+random_search = RandomizedSearchCV(RandomForestClassifier(), param_grid, cv=5, scoring='accuracy', n_iter=10)
+random_search.fit(X_train_vectorized, y_train)
+best_params = random_search.best_params_
+best_score = random_search.best_score_
+print("Best Parameters:", best_params)
+print("Best Score:", best_score)
+y_pred = random_search.predict(X_test_vectorized)
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+
+
+
+
+
+from sklearn.metrics import classification_report, confusion_matrix
+# Classification Report
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+# Confusion Matrix
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+# Save Model
+import pickle
+with open('best_model.pkl', 'wb') as f:
+    pickle.dump(random_search.best_estimator_, f)
+
+
+
+
